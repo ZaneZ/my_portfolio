@@ -9,4 +9,4 @@ npm-debug.log*
 *swp
 
 # debug files
-debug_*
+debug*
