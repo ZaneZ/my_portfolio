@@ -7,3 +7,6 @@ npm-debug.log*
 
 # temp files
 *swp
+
+# debug files
+debug_*
