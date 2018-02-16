@@ -1,4 +1,4 @@
-#! /usr/bin/node
+#! /usr/bin/env node
 
 'use strict';
 
@@ -8,25 +8,30 @@ var bodyParser = require('body-parser');
 var Data = require('./lib/utils/data-handler.js');
 var express = require('express');
 var Promise = require('promise');
+var path = require('path');
+var _ = require('lodash');
+
 var urlHandler = require('./lib/utils/url-handler.js');
 
-var _ = require('lodash');
 var app = express();
+
 var data = Data();
 var urlParser = urlHandler();
+var base = '/api/0.1/';
+
 
 app.use(bodyParser.json());
 
-app.get('/', function(req,res){
+app.get(path.join(base, '/'), function(req,res){
     res.send('Hello, you are having good connections!');
 });
 
-app.get('/profiles', function(req, res){
+app.get(path.join(base, '/profiles'), function(req, res){
     var details = urlParser.parse(req.url);
-
-    data.retrieveAll('profiles', details.query)
+    data.retrieveAll('profile', details.query)
     .then(function(doc){
         var repJson = JSON.stringify(doc);
+        console.log(doc);
         res.send(repJson);
     })
     .catch(function(err){
@@ -39,25 +44,23 @@ app.get('/profiles', function(req, res){
     });
 });
 
-/*
-app.put('/profile/new', function(req, res){
+app.put(path.join(base, '/profile/new'), function(req, res){
     data.newData('profile', req.body)
     .then(function(result){
+        console.log(Object.keys(result).length);
         res.send(result);
-        db.close();
     }).catch(function(err){
         console.log(err);
         res.send(JSON.stringify(err));
     });
 });
-*/
 
 /**
 * GET: /education
 * get education background with query
 */
 
-app.get('/education', function(req,res){
+app.get(path.join(base, '/education'), function(req,res){
     var details = urlParser.parse(req.url);
 
     if (_.isEmpty(details.query)) {
@@ -65,17 +68,19 @@ app.get('/education', function(req,res){
             status: "error",
             detail: "cannot look up education with empty query"
         };
-        res.send(JSON.stringify(repJSON));
+        return res.send(JSON.stringify(repJSON));
     }
-    
-    data.retrieveAll('profiles', details.query)
+
+    data.retrieveAll('profile', details.query)
     .then(function(doc){
+        console.log(JSON.stringify(doc));
         if (_.isEmpty(doc)){
             var repJSON = {
                 status: "ok",
                 detail: "The record queried does not exist."
             };
             res.send(JSON.stringify(repJSON));
+            throw new Error('No-Record');
         }
         else if ( doc.length > 1 ){
             var replyMultiRes = {
@@ -83,26 +88,29 @@ app.get('/education', function(req,res){
                 message: "Found multiple record by criteria. Which one do you want?",
                 details: doc
             };
-                
-            res.rend(JSON.stringify(replyMultiRes));
+            res.send(JSON.stringify(replyMultiRes));
+            throw new Error('MultiRecord');
         }
-        else {
-            var query = {};
-            query._id = doc[0]._id;
-            return data.retrieveAll('educations', query);
-        }
+        var query = {};
+        query._id = doc[0]._id;
+        return data.retrieveAll('education', query);
     })
     .then(function(doc){
         res.send(JSON.stringify(doc));
     })
     .catch(function(err){
-        var message = "error ecountered during look up\n";
-        console.log(message, err);
-        var repErr = {
-            status: 'error',
-            details: message + err
-        };
-        res.send(JSON.stringify(repErr));
+        if (err.message == 'No-Record' || err.message == 'MultiRecord'){
+            console.log(err.message);
+        }
+        else {
+            var message = "error ecountered during look up\n";
+            console.log(message, err.message);
+            var repErr = {
+                status: 'error',
+                details: message + err
+            };
+            res.send(JSON.stringify(repErr));
+        }
     });
 });
 
@@ -110,7 +118,7 @@ app.get('/education', function(req,res){
 * GET: /educations/<userId> 
 * Get education background
 */
-app.get('/educations/:id', function(req, res){
+app.get(path.join(base, '/education/:id'), function(req, res){
     var query = {};
     query._id = parseInt(req.params.id);
 
@@ -122,7 +130,7 @@ app.get('/educations/:id', function(req, res){
         res.send(JSON.stringify(repErr));
     }
 
-    data.retrieveAll('educations', query)
+    data.retrieveAll('education', query)
     .then(function(doc){
         var repJSON = JSON.stringify(doc);
         res.send(repJSON);
@@ -142,7 +150,7 @@ app.get('/educations/:id', function(req, res){
 * get working background with query
 */
 
-app.get('/work-experience', function(req,res){
+app.get(path.join(base, '/work-experience'), function(req,res){
     var details = urlParser.parse(req.url);
 
     if (_.isEmpty(details.query)) {
@@ -150,17 +158,19 @@ app.get('/work-experience', function(req,res){
             status: "error",
             detail: "cannot look up education with empty query"
         };
-        res.send(JSON.stringify(repJSON));
+        return res.send(JSON.stringify(repJSON));
     }
-    
-    data.retrieveAll('profiles', details.query)
+
+    data.retrieveAll('profile', details.query)
     .then(function(doc){
+        console.log(JSON.stringify(doc));
         if (_.isEmpty(doc)){
             var repJSON = {
                 status: "ok",
                 detail: "The record queried does not exist."
             };
             res.send(JSON.stringify(repJSON));
+            throw new Error('No-Record');
         }
         else if ( doc.length > 1 ){
             var replyMultiRes = {
@@ -168,34 +178,38 @@ app.get('/work-experience', function(req,res){
                 message: "Found multiple record by criteria. Which one do you want?",
                 details: doc
             };
-                
-            res.rend(JSON.stringify(replyMultiRes));
+            res.send(JSON.stringify(replyMultiRes));
+            throw new Error('MultiRecord');
         }
-        else {
-            var query = {};
-            query._id = doc[0]._id;
-            return data.retrieveAll('workExperiences', query);
-        }
+        var query = {};
+        query._id = doc[0]._id;
+        return data.retrieveAll('profession', query);
     })
     .then(function(doc){
         res.send(JSON.stringify(doc));
     })
     .catch(function(err){
-        var message = "error ecountered during look up\n";
-        console.log(message, err);
-        var repErr = {
-            status: 'error',
-            details: message + err
-        };
-        res.send(JSON.stringify(repErr));
+        if (err.message == 'No-Record' || err.message == 'MultiRecord'){
+            console.log(err.message);
+        }
+        else {
+            var message = "error ecountered during look up\n";
+            console.log(message, err.message);
+            var repErr = {
+                status: 'error',
+                details: message + err
+            };
+            res.send(JSON.stringify(repErr));
+        }
     });
 });
+
 
 /**
 * GET: /work-experience/<userId>
 * Get Professional background
 */
-app.get('/work-experience/:id', function(req, res){
+app.get(path.join(base, '/work-experience/:id'), function(req, res){
     var query = {};
     query._id = parseInt(req.params.id);
     if (! _.isInteger(query._id)) {
@@ -206,7 +220,7 @@ app.get('/work-experience/:id', function(req, res){
         res.send(JSON.stringify(repErr));
     }
 
-    data.retrieveAll('workExperiences', query)
+    data.retrieveAll('profession', query)
     .then(function(doc){
         var repJSON = JSON.stringify(doc);
         res.send(repJSON);
