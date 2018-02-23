@@ -5,34 +5,14 @@ set -e
 
 OS_NAME=""
 INSTALLER=""
+LINUX_RELEASE_NAME=$1
+MY_LOC=$(pwd)
 
-function print_tty() {
-    content=$1
-    time=$(date)
-    echo $time" - "$content
-}
+ls -ltr
 
-function os_type() {
-    OS_NAME=`lsb_release -a 2>/dev/null | grep -Pio '(Centos|Ubuntu)' | head -1`
-    if [ -z $OS_NAME ]
-    then 
-        print_tty "Cannot determine linux distribution."
-        exit 1
-    fi
-    
-    print_tty "OS is "$OS_NAME
+pwd
 
-    if [ $OS_NAME = 'Ubuntu' ]
-    then
-        INSTALLER='apt-get'
-    elif [ $OS_NAME = 'Centos' ]
-    then
-        INSTALLER='yum'
-    else
-        print_tty "Unrecognized os Name "$OS_NAME
-        exit 1
-    fi
-}
+source $MY_LOC/setup/utils.sh
 
 function install_npm(){
     print_tty "Install NPM"
@@ -84,14 +64,18 @@ function initialize_mongo(){
     collection_profile='profile'
     collection_education='education'
     collection_profession='profession'
-    path_base='/home/vagrant/src/lib/models/json'
+    path_base="$MY_LOC/lib/models/json"
     for collection in $collection_profile $collection_education $collection_profession; do
         mongoimport --db $db_name --collection $collection --type json --file $path_base"/"$collection".json"
     done
 }
 
 function main(){
-    os_type
+    if [ -z $LINUX_RELEASE_NAME ]; then
+        os_type
+    else
+        set_installer $LINUX_RELEASE_NAME
+    fi
     install_npm
     install_n
     install_node
